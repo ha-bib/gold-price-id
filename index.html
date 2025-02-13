@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Gold Prices Comparison</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .price-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .price-card {
+            border: 1px solid #ddd;
+            padding: 15px;
+            text-align: center;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+
+        .weight-selector {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .chart-container {
+            margin-top: 20px;
+        }
+
+        .weight-select {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+            margin-left: 10px;
+        }
+
+        .chart-toggle {
+            margin-bottom: 20px;
+            text-align: center;
+
+        }
+
+        .chart-toggle button {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+            margin-left: 10px;
+            cursor: pointer;
+        }
+
+        .chart-toggle button.active {
+            background-color: #ccc;
+        }
+
+        .weight-selector {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .weight-selector .weight-buttons {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .weight-selector button {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            background: linear-gradient(to right, #16dcff, #16d6cd);
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        .weight-selector button.active {
+            background: linear-gradient(to right, #11bd48, #04c735);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Perbandingan Harga Emas</h1>
+
+    <div class="weight-selector">
+        <div class="weight-buttons">
+            <button value="1gr" class="active">1 gr</button>
+            <button value="2gr">2 gr</button>
+            <button value="5gr">5 gr</button>
+            <button value="10gr">10 gr</button>
+            <button value="25gr">25 gr</button>
+            <button value="50gr">50 gr</button>
+            <button value="100gr">100 gr</button>
+            <button value="250gr">250 gr</button>
+            <button value="500gr">500 gr</button>
+            <button value="1000gr">1000 gr</button>
+        </div>
+    </div>
+
+    <div class="price-grid" id="price-grid">
+        <!-- Prices will be dynamically populated here -->
+    </div>
+
+    <div class="chart-container">
+        <canvas id="goldPriceChart"></canvas>
+    </div>
+
+    <div class="chart-container">
+        <canvas id="goldGraphChart"></canvas>
+    </div>
+
+    <div class="chart-toggle">
+        <button id="btn-price" class="active">Harga Jual</button>
+        <button id="btn-buyback">Harga Buyback</button>
+    </div>
+
+    <script>
+        $(document).ready(function () {
+            let goldPriceData = null;
+            let priceChart = null;
+            let goldHistoryChart = null;
+            let historicalData = null;
+
+            // Function to format price
+            function formatPrice(price) {
+                // Remove any non-numeric characters and format
+                const numericPrice = price.replace(/[^\d]/g, '');
+                return 'Rp ' + numericPrice.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+            }
+
+            // Function to fetch latest gold price JSON
+            function fetchGoldPrices() {
+                const today = new Date().toISOString().split('T')[0];
+                $.ajax({
+                    url: `./harga-log/gold_prices_${today}.json`,
+                    method: 'GET',
+                    dataType: 'json',
+                    success: function (data) {
+                        goldPriceData = data;
+
+                        // Trigger initial update with 1gr weight
+                        updatePriceGrid('1gr');
+                        updatePriceChart('1gr');
+                    },
+                    error: function (xhr, status, error) {
+                        console.error("Could not fetch gold prices:", error);
+
+                        // Fallback data
+                        goldPriceData = {
+                            timestamp: new Date().toISOString(),
+                            update_date: new Date().toLocaleDateString(),
+                            sources: {
+                                "GALERI 24": {
+                                    prices: {
+                                        "1gr": {
+                                            price: "1.669.000",
+                                            buyback: "1.555.000"
+                                        }
+                                    }
+                                },
+                                "ANTAM": {
+                                    prices: {
+                                        "1gr": {
+                                            price: "1.735.000",
+                                            buyback: "1.553.000"
+                                        }
+                                    }
+                                },
+                                "UBS": {
+                                    prices: {
+                                        "1gr": {
+                                            price: "1.671.000",
+                                            buyback: "1.553.000"
+                                        }
+                                    }
+                                }
+                            }
+                        };
+
+                        updatePriceGrid('1gr');
+                        updatePriceChart('1gr');
+                    }
+                });
+            }
+
+            // Function to update price grid
+            function updatePriceGrid(weight) {
+                const priceGrid = $('#price-grid');
+                priceGrid.empty();
+
+                Object.entries(goldPriceData.sources).forEach(([source, data]) => {
+                    const sourcePrice = data.prices[weight];
+                    const spread = (((parseInt(sourcePrice.price) - parseInt(sourcePrice.buyback)) /
+                        parseInt(sourcePrice.price)) * 100).toFixed(2);
+                    priceGrid.append(`
+                    <div class="price-card">
+                        <h3>${source} - ${weight}</h3>
+                        <div>
+                            <p  style="display: flex; justify-content: space-between;">Jual: <span>Rp ${parseInt(sourcePrice.price).toLocaleString()}</span></p>
+                            <p  style="display: flex; justify-content: space-between;">Buyback: <span>Rp ${parseInt(sourcePrice.buyback).toLocaleString()}</span></p>
+                            <p  style="display: flex; justify-content: space-between;">Spread<span>${spread}%</span></p>
+                        </div>
+                    </div>
+                `);
+                });
+            }
+
+            // Function to update price chart
+            function updatePriceChart(weight) {
+                const ctx = document.getElementById('goldPriceChart').getContext('2d');
+
+                // Destroy existing chart
+                if (priceChart) priceChart.destroy();
+
+                const sources = Object.keys(goldPriceData.sources);
+                const sellPrices = sources.map(source =>
+                    parseInt(goldPriceData.sources[source].prices[weight].price.replace(/\./g, ''))
+                );
+                const buybackPrices = sources.map(source =>
+                    parseInt(goldPriceData.sources[source].prices[weight].buyback.replace(/\./g, ''))
+                );
+
+                priceChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: sources,
+                        datasets: [{
+                                label: 'Harga Jual',
+                                data: sellPrices,
+                                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                                borderColor: 'rgb(54, 162, 235)',
+                                borderWidth: 1
+                            },
+                            {
+                                label: 'Harga Buyback',
+                                data: buybackPrices,
+                                backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                                borderColor: 'rgb(255, 99, 132)',
+                                borderWidth: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: false,
+                                ticks: {
+                                    callback: function (value) {
+                                        return 'Rp ' + value.toString().replace(
+                                            /\B(?=(\d{3})+(?!\d))/g, ".");
+                                    }
+                                }
+                            }
+                        },
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: `Gold Prices Comparison - ${weight}`
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Function to fetch historical gold price data
+            function fetchHistoricalData() {
+                // First, fetch the list of JSON files
+                $.ajax({
+                    url: './harga-log/file-list.json',
+                    method: 'GET',
+                    dataType: 'json',
+                    success: function (jsonFileNames) {
+                        // Fetch data for each file
+                        const dataPromises = jsonFileNames.map(fileName =>
+                            $.ajax({
+                                url: `./harga-log/${fileName}`,
+                                method: 'GET',
+                                dataType: 'json'
+                            })
+                        );
+
+                        Promise.all(dataPromises)
+                            .then(results => {
+                                historicalData = results.map((data, index) => ({
+                                    date: jsonFileNames[index].match(
+                                        /gold_prices_(\d{4}-\d{2}-\d{2})/)[1],
+                                    data: data
+                                }));
+
+                                // Initial graph creation
+                                updateHistoricalGraph('price');
+                            })
+                            .catch(error => {
+                                console.error("Error fetching historical data:", error);
+                            });
+                    },
+                    error: function (xhr, status, error) {
+                        console.error("Could not fetch file list:", error);
+                    }
+                });
+            }
+
+            // Function to update historical graph
+            function updateHistoricalGraph(type) {
+                if (!historicalData) return;
+
+                const ctx = document.getElementById('goldGraphChart').getContext('2d');
+
+                // Destroy existing chart
+                if (goldHistoryChart) goldHistoryChart.destroy();
+
+                // Prepare data for each source
+                const sources = Object.keys(goldPriceData.sources);
+                const datasets = sources.map(source => {
+                    return {
+                        label: source,
+                        data: historicalData.map(entry => {
+                            const sourceData = entry.data.sources[source];
+                            // Use 1gr as default weight if not specified
+                            const priceData = sourceData.prices['1gr'];
+                            return type === 'price' ?
+                                parseInt(priceData.price.replace(/\./g, '')) :
+                                parseInt(priceData.buyback.replace(/\./g, ''));
+                        }),
+                        fill: false,
+                        borderColor: getRandomColor(),
+                        tension: 0.1
+                    };
+                });
+
+                goldHistoryChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: historicalData.map(entry => entry.date),
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: type === 'price' ? 'Harga Jual Emas' : 'Harga Buyback Emas'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                ticks: {
+                                    callback: function (value) {
+                                        return 'Rp ' + value.toString().replace(
+                                            /\B(?=(\d{3})+(?!\d))/g, ".");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Helper function to generate random colors
+            function getRandomColor() {
+                const letters = '0123456789ABCDEF';
+                let color = '#';
+                for (let i = 0; i < 6; i++) {
+                    color += letters[Math.floor(Math.random() * 16)];
+                }
+                return color;
+            }
+
+            // Chart toggle event listeners
+            $('#btn-price').on('click', function () {
+                $('.chart-toggle button').removeClass('active');
+                $(this).addClass('active');
+                updateHistoricalGraph('price');
+            });
+
+            $('#btn-buyback').on('click', function () {
+                $('.chart-toggle button').removeClass('active');
+                $(this).addClass('active');
+                updateHistoricalGraph('buyback');
+            });
+
+            // Weight selector change event
+            $('.weight-selector .weight-buttons button').on('click', function () {
+                // Remove active class from all buttons
+                $('.weight-selector .weight-buttons button').removeClass('active');
+
+                // Add active class to clicked button
+                $(this).addClass('active');
+
+                // Get selected weight
+                const selectedWeight = $(this).val();
+
+                // Update price grid and chart
+                updatePriceGrid(selectedWeight);
+                updatePriceChart(selectedWeight);
+            });
+
+            // Initial fetch
+            fetchGoldPrices();
+            setTimeout(fetchHistoricalData, 1000);
+        });
+    </script>
+</body>
+
+</html>
