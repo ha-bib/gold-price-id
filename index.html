@@ -104,6 +104,7 @@
         <div class="weight-buttons">
             <button value="1gr" class="active">1 gr</button>
             <button value="2gr">2 gr</button>
+            <button value="3gr">3 gr</button>
             <button value="5gr">5 gr</button>
             <button value="10gr">10 gr</button>
             <button value="25gr">25 gr</button>
@@ -148,95 +149,113 @@
 
             // Function to fetch latest gold price JSON
             function fetchGoldPrices() {
-                const today = new Date().toISOString().split('T')[0];
                 $.ajax({
-                    url: `./harga-log/gold_prices_${today}.json`,
+                    url: './harga-log/file-list.json',
                     method: 'GET',
                     dataType: 'json',
-                    success: function (data) {
-                        goldPriceData = data;
+                    success: function (fileList) {
+                        // Sort files in descending order to get the latest
+                        const sortedFiles = fileList.sort((a, b) => b.localeCompare(a));
 
-                        // Trigger initial update with 1gr weight
-                        updatePriceGrid('1gr');
-                        updatePriceChart('1gr');
+                        // Get the latest file
+                        if (sortedFiles.length > 0) {
+                            const latestFile = sortedFiles[0];
+
+                            // Fetch the latest gold price data
+                            $.ajax({
+                                url: `./harga-log/${latestFile}`,
+                                method: 'GET',
+                                dataType: 'json',
+                                success: function (data) {
+                                    goldPriceData = data;
+
+                                    // Trigger initial update with 1gr weight
+                                    updatePriceGrid('1gr');
+                                    updatePriceChart('1gr');
+                                },
+                                error: function (xhr, status, error) {
+                                    console.error(
+                                        "Could not fetch latest gold price data:",
+                                        error);
+
+                                    // Fallback data
+                                    goldPriceData = {
+                                        timestamp: new Date().toISOString(),
+                                        update_date: new Date()
+                                            .toLocaleDateString(),
+                                        sources: {}
+                                    };
+                                }
+                            });
+                        } else {
+                            console.error("No gold price files found");
+                        }
                     },
                     error: function (xhr, status, error) {
-                        console.error("Could not fetch gold prices:", error);
-
-                        // Fallback data
-                        goldPriceData = {
-                            timestamp: new Date().toISOString(),
-                            update_date: new Date().toLocaleDateString(),
-                            sources: {
-                                "GALERI 24": {
-                                    prices: {
-                                        "1gr": {
-                                            price: "1.669.000",
-                                            buyback: "1.555.000"
-                                        }
-                                    }
-                                },
-                                "ANTAM": {
-                                    prices: {
-                                        "1gr": {
-                                            price: "1.735.000",
-                                            buyback: "1.553.000"
-                                        }
-                                    }
-                                },
-                                "UBS": {
-                                    prices: {
-                                        "1gr": {
-                                            price: "1.671.000",
-                                            buyback: "1.553.000"
-                                        }
-                                    }
-                                }
-                            }
-                        };
-
-                        updatePriceGrid('1gr');
-                        updatePriceChart('1gr');
+                        console.error("Could not fetch file list:", error);
                     }
                 });
             }
 
             // Function to update price grid
             function updatePriceGrid(weight) {
+                // console.log('Updating price grid for weight:', weight);
                 const priceGrid = $('#price-grid');
                 priceGrid.empty();
 
+                let sourcesUpdated = 0;
                 Object.entries(goldPriceData.sources).forEach(([source, data]) => {
-                    const sourcePrice = data.prices[weight];
-                    const spread = (((parseInt(sourcePrice.price) - parseInt(sourcePrice.buyback)) /
-                        parseInt(sourcePrice.price)) * 100).toFixed(2);
-                    priceGrid.append(`
-                    <div class="price-card">
-                        <h3>${source} - ${weight}</h3>
-                        <div>
-                            <p  style="display: flex; justify-content: space-between;">Jual: <span>Rp ${parseInt(sourcePrice.price).toLocaleString()}</span></p>
-                            <p  style="display: flex; justify-content: space-between;">Buyback: <span>Rp ${parseInt(sourcePrice.buyback).toLocaleString()}</span></p>
-                            <p  style="display: flex; justify-content: space-between;">Spread<span>${spread}%</span></p>
+                    if (data.prices[weight]) {
+                        sourcesUpdated++;
+                        const sourcePrice = data.prices[weight];
+                        const spread = (((parseInt(sourcePrice.price) - parseInt(sourcePrice.buyback)) /
+                            parseInt(sourcePrice.price)) * 100).toFixed(2);
+                        priceGrid.append(`
+                        <div class="price-card">
+                            <h3>${source} - ${weight}</h3>
+                            <div>
+                                <p  style="display: flex; justify-content: space-between;">Jual: <span>Rp ${parseInt(sourcePrice.price).toLocaleString()}</span></p>
+                                <p  style="display: flex; justify-content: space-between;">Buyback: <span>Rp ${parseInt(sourcePrice.buyback).toLocaleString()}</span></p>
+                                <p  style="display: flex; justify-content: space-between;">Spread<span>${spread}%</span></p>
+                            </div>
                         </div>
-                    </div>
-                `);
+                    `);
+                    }
                 });
+
+                // console.log(`Updated price grid for ${sourcesUpdated} sources`);
+                if (sourcesUpdated === 0) {
+                    console.error(`No sources found with price for weight: ${weight}`);
+                }
             }
 
             // Function to update price chart
             function updatePriceChart(weight) {
+                // console.log('Updating price chart for weight:', weight);
                 const ctx = document.getElementById('goldPriceChart').getContext('2d');
 
                 // Destroy existing chart
                 if (priceChart) priceChart.destroy();
 
-                const sources = Object.keys(goldPriceData.sources);
+                const sources = Object.keys(goldPriceData.sources)
+                    .filter(source => goldPriceData.sources[source].prices[weight]);
+
+                // console.log('Sources for chart:', sources);
+
                 const sellPrices = sources.map(source =>
                     parseInt(goldPriceData.sources[source].prices[weight].price.replace(/\./g, ''))
                 );
                 const buybackPrices = sources.map(source =>
                     parseInt(goldPriceData.sources[source].prices[weight].buyback.replace(/\./g, ''))
                 );
+
+                // console.log('Sell Prices:', sellPrices);
+                // console.log('Buyback Prices:', buybackPrices);
+
+                if (sources.length === 0) {
+                    console.error(`No sources found with price for weight: ${weight}`);
+                    return;
+                }
 
                 priceChart = new Chart(ctx, {
                     type: 'bar',
@@ -274,7 +293,7 @@
                         plugins: {
                             title: {
                                 display: true,
-                                text: `Gold Prices Comparison - ${weight}`
+                                text: `Perbandingan Harga Emas - ${weight}`
                             }
                         }
                     }
@@ -323,6 +342,10 @@
             function updateHistoricalGraph(type) {
                 if (!historicalData) return;
 
+                // Get the currently selected weight
+                const currentWeight = $('.weight-buttons button.active').val() || '1gr';
+                // console.log('Updating historical graph for weight:', currentWeight);
+
                 const ctx = document.getElementById('goldGraphChart').getContext('2d');
 
                 // Destroy existing chart
@@ -335,8 +358,9 @@
                         label: source,
                         data: historicalData.map(entry => {
                             const sourceData = entry.data.sources[source];
-                            // Use 1gr as default weight if not specified
-                            const priceData = sourceData.prices['1gr'];
+                            // Use selected weight, fallback to 1gr if not available
+                            const priceData = sourceData.prices[currentWeight] || sourceData
+                                .prices['1gr'];
                             return type === 'price' ?
                                 parseInt(priceData.price.replace(/\./g, '')) :
                                 parseInt(priceData.buyback.replace(/\./g, ''));
@@ -358,7 +382,7 @@
                         plugins: {
                             title: {
                                 display: true,
-                                text: type === 'price' ? 'Harga Jual Emas' : 'Harga Buyback Emas'
+                                text: `${type === 'price' ? 'Grafik Harga Jual' : 'Grafik Harga Buyback'} Emas - ${currentWeight}`
                             }
                         },
                         scales: {
@@ -407,11 +431,28 @@
                 $(this).addClass('active');
 
                 // Get selected weight
-                const selectedWeight = $(this).val();
+                const weight = $(this).val();
 
-                // Update price grid and chart
-                updatePriceGrid(selectedWeight);
-                updatePriceChart(selectedWeight);
+                // console.log('Weight button clicked:', weight);
+                // console.log('Gold Price Data:', goldPriceData);
+
+                const sourcesWithWeight = Object.entries(goldPriceData.sources)
+                    .filter(([source, data]) => data.prices.hasOwnProperty(weight));
+
+                // console.log('Sources with weight:', sourcesWithWeight);
+
+                if (sourcesWithWeight.length > 0) {
+                    updatePriceGrid(weight);
+                    updatePriceChart(weight);
+
+                    // Update historical graph for the current chart type
+                    const currentType = $('.chart-toggle button.active').attr('id') === 'btn-price' ?
+                        'price' : 'buyback';
+                    updateHistoricalGraph(currentType);
+                } else {
+                    console.error(`No price data found for weight: ${weight}`);
+                    alert(`No price data found for ${weight}`);
+                }
             });
 
             // Initial fetch

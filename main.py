@@ -27,7 +27,7 @@ def parse_gold_prices(raw_text):
     raw_text = raw_text.replace('\n', ' ').strip()
     
     # Prices for specific weights
-    target_weights = ['0.5', '1', '2', '5', '10', '25', '50', '100', '250', '500', '1000']
+    target_weights = ['0.5', '1', '2', '3', '5', '10', '25', '50', '100', '250', '500', '1000']
     
     # Initialize result dictionary
     result = {}
