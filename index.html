@@ -9,6 +9,16 @@
     <link rel="icon" href="favicon.ico" type="image/x-icon">
 
     <style>
+        h1 {
+            text-align: center;
+            margin-bottom: 0px;
+        }
+        small {
+            display: block;
+            color: #939393;
+            text-align: center;
+            margin-bottom: 20px;
+        }
         body {
             font-family: Arial, sans-serif;
             max-width: 900px;
@@ -99,6 +109,7 @@
 
 <body>
     <h1>Perbandingan Harga Emas</h1>
+    <small id="last-updated">Last updated:</small>
 
     <div class="weight-selector">
         <div class="weight-buttons">
@@ -150,7 +161,7 @@
             // Function to fetch latest gold price JSON
             function fetchGoldPrices() {
                 $.ajax({
-                    url: './harga-log/file-list.json',
+                    url: `./harga-log/file-list.json?_=${Math.random()}`,
                     method: 'GET',
                     dataType: 'json',
                     success: function (fileList) {
@@ -163,12 +174,12 @@
 
                             // Fetch the latest gold price data
                             $.ajax({
-                                url: `./harga-log/${latestFile}`,
+                                url: `./harga-log/${latestFile}?_=${Math.random()}`,
                                 method: 'GET',
                                 dataType: 'json',
                                 success: function (data) {
                                     goldPriceData = data;
-
+                                    $("#last-updated").text("Last updated: " + data.update_date);
                                     // Trigger initial update with 1gr weight
                                     updatePriceGrid('1gr');
                                     updatePriceChart('1gr');
@@ -304,14 +315,14 @@
             function fetchHistoricalData() {
                 // First, fetch the list of JSON files
                 $.ajax({
-                    url: './harga-log/file-list.json',
+                    url: `./harga-log/file-list.json?_=${Math.random()}`,
                     method: 'GET',
                     dataType: 'json',
                     success: function (jsonFileNames) {
                         // Fetch data for each file
                         const dataPromises = jsonFileNames.map(fileName =>
                             $.ajax({
-                                url: `./harga-log/${fileName}`,
+                                url: `./harga-log/${fileName}?_=${Math.random()}`,
                                 method: 'GET',
                                 dataType: 'json'
                             })
