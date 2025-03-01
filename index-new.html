@@ -1,11 +1,16 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 
 <head>
     <meta charset="UTF-8">
-    <title>Gold Prices Comparison</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perbandingan Harga Emas</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
     <link rel="icon" href="favicon.ico" type="image/x-icon">
 
     <style>
@@ -115,7 +120,7 @@
 
         .price-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
             gap: 20px;
             margin-bottom: 30px;
         }
@@ -258,7 +263,36 @@
 
         .loader div:nth-child(3) {
             animation-delay: 0.4s;
-        } 
+        }
+
+        @keyframes loader {
+            0% {
+                transform: translateY(0);
+            }
+
+            100% {
+                transform: translateY(-15px);
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 15px;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .price-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .weight-buttons button {
+                padding: 8px 14px;
+                font-size: 0.85rem;
+            }
+        }
     </style>
 </head>
 
@@ -287,7 +321,13 @@
         </div>
 
         <h3 class="section-title">Perbandingan Harga Terkini</h3>
-        <div class="price-grid" id="price-grid">
+        <div id="price-loading" class="loader">
+            <div></div>
+            <div></div>
+            <div></div>
+        </div>
+        <div class="price-grid" id="price-grid" style="display: none;">
+            <!-- Prices will be dynamically populated here -->
         </div>
     </div>
 
@@ -302,8 +342,17 @@
             <button id="btn-price" class="active">Harga Jual</button>
             <button id="btn-buyback">Harga Buyback</button>
         </div>
-        <canvas id="goldGraphChart"></canvas>
+        <div id="history-loading" class="loader">
+            <div></div>
+            <div></div>
+            <div></div>
+        </div>
+        <canvas id="goldGraphChart" style="display: none;"></canvas>
     </div>
+
+    <footer>
+        <p>&copy; 2025 Perbandingan Harga Emas. Data diperbarui secara berkala.</p>
+    </footer>
 
     <script>
         $(document).ready(function () {
@@ -316,15 +365,27 @@
                 '#3F51B5', '#E91E63', '#009688', '#795548', '#607D8B'
             ];
 
+            // Show loading message
+            function showLoader(elementId) {
+                $(`#${elementId}`).show();
+            }
+
+            // Hide loading message
+            function hideLoader(elementId, targetId) {
+                $(`#${elementId}`).hide();
+                if (targetId) $(`#${targetId}`).show();
+            }
+
             // Function to format price
             function formatPrice(price) {
                 // Remove any non-numeric characters and format
-                const numericPrice = price.replace(/[^\d]/g, '');
+                const numericPrice = typeof price === 'string' ? price.replace(/[^\d]/g, '') : price.toString();
                 return 'Rp ' + numericPrice.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
             }
 
             // Function to fetch latest gold price JSON
             function fetchGoldPrices() {
+                showLoader('price-loading');
                 $.ajax({
                     url: `./harga-log/file-list.json?_=${Math.random()}`,
                     method: 'GET',
@@ -344,39 +405,48 @@
                                 dataType: 'json',
                                 success: function (data) {
                                     goldPriceData = data;
-                                    $("#last-updated").text("Last updated: " + data
-                                        .update_date);
+                                    const date = new Date(data.update_date);
+                                    const formattedDate = date.toLocaleDateString('id-ID', {
+                                        day: 'numeric',
+                                        month: 'long',
+                                        year: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                    });
+                                    $("#last-updated").text(`Terakhir diperbarui: ${formattedDate}`);
                                     // Trigger initial update with 1gr weight
                                     updatePriceGrid('1gr');
                                     updatePriceChart('1gr');
+                                    hideLoader('price-loading', 'price-grid');
                                 },
                                 error: function (xhr, status, error) {
-                                    console.error(
-                                        "Could not fetch latest gold price data:",
-                                        error);
-
+                                    console.error("Could not fetch latest gold price data:", error);
+                                    $("#last-updated").text("Gagal memuat data terbaru");
+                                    hideLoader('price-loading');
                                     // Fallback data
                                     goldPriceData = {
                                         timestamp: new Date().toISOString(),
-                                        update_date: new Date()
-                                            .toLocaleDateString(),
+                                        update_date: new Date().toLocaleDateString(),
                                         sources: {}
                                     };
                                 }
                             });
                         } else {
                             console.error("No gold price files found");
+                            $("#last-updated").text("Tidak ada data harga ditemukan");
+                            hideLoader('price-loading');
                         }
                     },
                     error: function (xhr, status, error) {
                         console.error("Could not fetch file list:", error);
+                        $("#last-updated").text("Gagal memuat daftar file");
+                        hideLoader('price-loading');
                     }
                 });
             }
 
             // Function to update price grid
             function updatePriceGrid(weight) {
-                // console.log('Updating price grid for weight:', weight);
                 const priceGrid = $('#price-grid');
                 priceGrid.empty();
 
@@ -385,30 +455,44 @@
                     if (data.prices[weight]) {
                         sourcesUpdated++;
                         const sourcePrice = data.prices[weight];
-                        const spread = (((parseInt(sourcePrice.price) - parseInt(sourcePrice.buyback)) /
-                            parseInt(sourcePrice.price)) * 100).toFixed(2);
+                        const sellPrice = parseInt(sourcePrice.price.replace(/\./g, ''));
+                        const buybackPrice = parseInt(sourcePrice.buyback.replace(/\./g, ''));
+                        const spread = (((sellPrice - buybackPrice) / sellPrice) * 100).toFixed(2);
+
                         priceGrid.append(`
                         <div class="price-card">
                             <h3>${source} - ${weight}</h3>
                             <div>
-                                <p  style="display: flex; justify-content: space-between;">Jual: <span>Rp ${parseInt(sourcePrice.price).toLocaleString()}</span></p>
-                                <p  style="display: flex; justify-content: space-between;">Buyback: <span>Rp ${parseInt(sourcePrice.buyback).toLocaleString()}</span></p>
-                                <p  style="display: flex; justify-content: space-between;">Spread<span>${spread}%</span></p>
+                                <p class="sell-price" style="display: flex; justify-content: space-between;">
+                                    <strong>Harga Jual:</strong> 
+                                    <span>${formatPrice(sellPrice)}</span>
+                                </p>
+                                <p class="buyback-price" style="display: flex; justify-content: space-between;">
+                                    <strong>Harga Buyback:</strong> 
+                                    <span>${formatPrice(buybackPrice)}</span>
+                                </p>
+                                <p style="display: flex; justify-content: space-between;">
+                                    <strong>Selisih:</strong>
+                                    <span class="spread-value">${spread}%</span>
+                                </p>
                             </div>
                         </div>
                     `);
                     }
                 });
 
-                // console.log(`Updated price grid for ${sourcesUpdated} sources`);
                 if (sourcesUpdated === 0) {
+                    priceGrid.append(`
+                        <div style="grid-column: 1/-1; text-align: center; padding: 20px;">
+                            <p>Tidak ada data harga untuk berat ${weight}</p>
+                        </div>
+                    `);
                     console.error(`No sources found with price for weight: ${weight}`);
                 }
             }
 
             // Function to update price chart
             function updatePriceChart(weight) {
-                // console.log('Updating price chart for weight:', weight);
                 const ctx = document.getElementById('goldPriceChart').getContext('2d');
 
                 // Destroy existing chart
@@ -417,60 +501,70 @@
                 const sources = Object.keys(goldPriceData.sources)
                     .filter(source => goldPriceData.sources[source].prices[weight]);
 
-                // console.log('Sources for chart:', sources);
-
-                const sellPrices = sources.map(source =>
-                    parseInt(goldPriceData.sources[source].prices[weight].price.replace(/\./g, ''))
-                );
-                const buybackPrices = sources.map(source =>
-                    parseInt(goldPriceData.sources[source].prices[weight].buyback.replace(/\./g, ''))
-                );
-
-                // console.log('Sell Prices:', sellPrices);
-                // console.log('Buyback Prices:', buybackPrices);
-
                 if (sources.length === 0) {
                     console.error(`No sources found with price for weight: ${weight}`);
                     return;
                 }
+
+                const sellPrices = sources.map(source => {
+                    const priceStr = goldPriceData.sources[source].prices[weight].price;
+                    return parseInt(priceStr.replace(/\D/g, ''));
+                });
+
+                const buybackPrices = sources.map(source => {
+                    const buybackStr = goldPriceData.sources[source].prices[weight].buyback;
+                    return parseInt(buybackStr.replace(/\D/g, ''));
+                });
 
                 priceChart = new Chart(ctx, {
                     type: 'bar',
                     data: {
                         labels: sources,
                         datasets: [{
-                                label: 'Harga Jual',
-                                data: sellPrices,
-                                backgroundColor: 'rgba(76, 175, 80, 0.7)',
-                                borderColor: 'rgb(76, 175, 80)',
-                                borderWidth: 1
-                            },
-                            {
-                                label: 'Harga Buyback',
-                                data: buybackPrices,
-                                backgroundColor: 'rgba(255, 87, 34, 0.7)',
-                                borderColor: 'rgb(255, 87, 34)',
-                                borderWidth: 1
-                            }
+                            label: 'Harga Jual',
+                            data: sellPrices,
+                            backgroundColor: 'rgba(76, 175, 80, 0.7)',
+                            borderColor: 'rgb(76, 175, 80)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Harga Buyback',
+                            data: buybackPrices,
+                            backgroundColor: 'rgba(255, 87, 34, 0.7)',
+                            borderColor: 'rgb(255, 87, 34)',
+                            borderWidth: 1
+                        }
                         ]
                     },
                     options: {
                         responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed.y !== null) {
+                                            label += formatPrice(context.parsed.y);
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
                         scales: {
                             y: {
                                 beginAtZero: false,
                                 ticks: {
                                     callback: function (value) {
-                                        return 'Rp ' + value.toString().replace(
-                                            /\B(?=(\d{3})+(?!\d))/g, ".");
+                                        return formatPrice(value);
                                     }
                                 }
-                            }
-                        },
-                        plugins: {
-                            title: {
-                                display: true,
-                                text: `Perbandingan Harga Emas - ${weight}`
                             }
                         }
                     }
@@ -479,12 +573,16 @@
 
             // Function to fetch historical gold price data
             function fetchHistoricalData() {
+                showLoader('history-loading');
                 // First, fetch the list of JSON files
                 $.ajax({
                     url: `./harga-log/file-list.json?_=${Math.random()}`,
                     method: 'GET',
                     dataType: 'json',
                     success: function (jsonFileNames) {
+                        // Sort files chronologically
+                        jsonFileNames.sort();
+
                         // Fetch data for each file
                         const dataPromises = jsonFileNames.map(fileName =>
                             $.ajax({
@@ -496,96 +594,142 @@
 
                         Promise.all(dataPromises)
                             .then(results => {
-                                historicalData = results.map((data, index) => ({
-                                    date: jsonFileNames[index].match(
-                                        /gold_prices_(\d{4}-\d{2}-\d{2})/)[1],
-                                    data: data
-                                }));
+                                historicalData = results.map((data, index) => {
+                                    const dateMatch = jsonFileNames[index].match(/gold_prices_(\d{4}-\d{2}-\d{2})/);
+                                    return {
+                                        date: dateMatch ? dateMatch[1] : 'Unknown',
+                                        data: data
+                                    };
+                                });
 
                                 // Initial graph creation
                                 updateHistoricalGraph('price');
+                                hideLoader('history-loading', 'goldGraphChart');
                             })
                             .catch(error => {
                                 console.error("Error fetching historical data:", error);
+                                hideLoader('history-loading');
+                                $('#goldGraphChart').after('<p style="text-align: center; color: #d32f2f;">Gagal memuat data historis</p>');
                             });
                     },
                     error: function (xhr, status, error) {
                         console.error("Could not fetch file list:", error);
+                        hideLoader('history-loading');
+                        $('#goldGraphChart').after('<p style="text-align: center; color: #d32f2f;">Gagal memuat daftar file</p>');
                     }
                 });
             }
 
             // Function to update historical graph
             function updateHistoricalGraph(type) {
-                if (!historicalData) return;
+                if (!historicalData || historicalData.length === 0) return;
 
                 // Get the currently selected weight
                 const currentWeight = $('.weight-buttons button.active').val() || '1gr';
-                // console.log('Updating historical graph for weight:', currentWeight);
 
                 const ctx = document.getElementById('goldGraphChart').getContext('2d');
 
                 // Destroy existing chart
                 if (goldHistoryChart) goldHistoryChart.destroy();
 
+                // Sort dates chronologically
+                historicalData.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                // Get all unique sources across all dates
+                const allSources = new Set();
+                historicalData.forEach(entry => {
+                    if (entry.data && entry.data.sources) {
+                        Object.keys(entry.data.sources).forEach(source => allSources.add(source));
+                    }
+                });
+
+                const sources = Array.from(allSources);
+
                 // Prepare data for each source
-                const sources = Object.keys(goldPriceData.sources);
                 const datasets = sources.map((source, index) => {
                     const colorIndex = index % chartColors.length;
+
                     return {
                         label: source,
                         data: historicalData.map(entry => {
+                            if (!entry.data || !entry.data.sources || !entry.data.sources[source]) {
+                                return null; // No data for this source on this date
+                            }
+
                             const sourceData = entry.data.sources[source];
-                            // Use selected weight, fallback to 1gr if not available
-                            const priceData = sourceData.prices[currentWeight] || sourceData
-                                .prices['1gr'];
-                            return type === 'price' ?
-                                parseInt(priceData.price.replace(/\./g, '')) :
-                                parseInt(priceData.buyback.replace(/\./g, ''));
+
+                            // Check if data exists for the current weight
+                            if (!sourceData.prices || !sourceData.prices[currentWeight]) {
+                                return null;
+                            }
+
+                            const priceData = sourceData.prices[currentWeight];
+
+                            try {
+                                return type === 'price'
+                                    ? parseInt(priceData.price.toString().replace(/\D/g, ''))
+                                    : parseInt(priceData.buyback.toString().replace(/\D/g, ''));
+                            } catch (e) {
+                                console.error(`Error parsing price for ${source} on ${entry.date}:`, e);
+                                return null;
+                            }
                         }),
                         fill: false,
                         borderColor: chartColors[colorIndex],
                         backgroundColor: chartColors[colorIndex],
-                        tension: 0.1
+                        tension: 0.1,
+                        pointRadius: 3,
+                        pointHoverRadius: 5,
+                        spanGaps: true // Connect lines across null values
                     };
+                });
+
+                // Format dates for display
+                const formattedDates = historicalData.map(entry => {
+                    try {
+                        const date = new Date(entry.date);
+                        return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+                    } catch (e) {
+                        console.error(`Error formatting date ${entry.date}:`, e);
+                        return entry.date;
+                    }
                 });
 
                 goldHistoryChart = new Chart(ctx, {
                     type: 'line',
                     data: {
-                        labels: historicalData.map(entry => entry.date),
+                        labels: formattedDates,
                         datasets: datasets
                     },
                     options: {
                         responsive: true,
                         plugins: {
-                            title: {
-                                display: true,
-                                text: `${type === 'price' ? 'Grafik Harga Jual' : 'Grafik Harga Buyback'} Emas - ${currentWeight}`
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed.y !== null) {
+                                            label += formatPrice(context.parsed.y);
+                                        }
+                                        return label;
+                                    }
+                                }
                             }
                         },
                         scales: {
                             y: {
                                 ticks: {
                                     callback: function (value) {
-                                        return 'Rp ' + value.toString().replace(
-                                            /\B(?=(\d{3})+(?!\d))/g, ".");
+                                        return formatPrice(value);
                                     }
                                 }
                             }
                         }
                     }
                 });
-            }
-
-            // Helper function to generate random colors
-            function getRandomColor() {
-                const letters = '0123456789ABCDEF';
-                let color = '#';
-                for (let i = 0; i < 6; i++) {
-                    color += letters[Math.floor(Math.random() * 16)];
-                }
-                return color;
             }
 
             // Chart toggle event listeners
@@ -612,26 +756,37 @@
                 // Get selected weight
                 const weight = $(this).val();
 
-                // console.log('Weight button clicked:', weight);
-                // console.log('Gold Price Data:', goldPriceData);
+                if (!goldPriceData) {
+                    alert('Data harga emas belum tersedia. Silakan coba beberapa saat lagi.');
+                    return;
+                }
 
                 const sourcesWithWeight = Object.entries(goldPriceData.sources)
-                    .filter(([source, data]) => data.prices.hasOwnProperty(weight));
+                    .filter(([source, data]) => data.prices && data.prices.hasOwnProperty(weight));
 
-                // console.log('Sources with weight:', sourcesWithWeight);
+                showLoader('price-loading');
+                $('#price-grid').hide();
 
-                if (sourcesWithWeight.length > 0) {
-                    updatePriceGrid(weight);
-                    updatePriceChart(weight);
+                setTimeout(() => {
+                    if (sourcesWithWeight.length > 0) {
+                        updatePriceGrid(weight);
+                        updatePriceChart(weight);
 
-                    // Update historical graph for the current chart type
-                    const currentType = $('.chart-toggle button.active').attr('id') === 'btn-price' ?
-                        'price' : 'buyback';
-                    updateHistoricalGraph(currentType);
-                } else {
-                    console.error(`No price data found for weight: ${weight}`);
-                    alert(`No price data found for ${weight}`);
-                }
+                        // Update historical graph for the current chart type
+                        const currentType = $('.chart-toggle button.active').attr('id') === 'btn-price' ?
+                            'price' : 'buyback';
+                        updateHistoricalGraph(currentType);
+                    } else {
+                        console.error(`No price data found for weight: ${weight}`);
+                        $('#price-grid').html(`
+                            <div style="grid-column: 1/-1; text-align: center; padding: 20px;">
+                                <p>Tidak ada data harga untuk berat ${weight}</p>
+                            </div>
+                        `);
+                    }
+
+                    hideLoader('price-loading', 'price-grid');
+                }, 300);
             });
 
             // Initial fetch
