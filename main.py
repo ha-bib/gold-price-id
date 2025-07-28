@@ -244,6 +244,39 @@ def main():
     generate_file_list()
     
     logging.info("Gold price scraping completed successfully.")
+    
+    # Git operations
+    print("Performing git operations...")
+    import subprocess
+
+    try:
+        # Change to result directory for git operations
+        result_dir = "./"
+        
+        # Git add all files
+        print("Running git add . ")
+        subprocess.run(["git", "add", "."], check=True, cwd=result_dir)
+        
+        # Git commit with timestamp
+        from datetime import datetime 
+        commit_message = f"Update data (galeri24)"
+        print(f"Running git commit with message: {commit_message}")
+        subprocess.run(["git", "commit", "-m", commit_message], check=True, cwd=result_dir)
+        
+        # Git push
+        print("Running git push")
+        subprocess.run(["git", "push"], check=True, cwd=result_dir)
+        
+        print("Git operations completed successfully!")
+        
+    except subprocess.CalledProcessError as e:
+        print(f"Git operation failed: {e}")
+    except Exception as e:
+        print(f"Error during git operations: {e}")
+
+    # Exit code
+    print("Script finished successfully.")
+    exit(0) 
 
 if __name__ == "__main__":
     main()
