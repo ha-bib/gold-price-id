@@ -53,52 +53,48 @@
     "ANTAM": {
       "prices": {
         "05gr": {
-          "price": "0",
-          "buyback": "880000"
+          "price": "1022000",
+          "buyback": "872000"
         },
         "1gr": {
-          "price": "0",
-          "buyback": "1761000"
+          "price": "1941000",
+          "buyback": "1744000"
         },
         "2gr": {
-          "price": "0",
-          "buyback": "3522000"
-        },
-        "3gr": {
-          "price": "0",
-          "buyback": "5283000"
+          "price": "3821000",
+          "buyback": "3488000"
         },
         "5gr": {
-          "price": "0",
-          "buyback": "8805000"
+          "price": "9474000",
+          "buyback": "8721000"
         },
         "10gr": {
-          "price": "0",
-          "buyback": "17610000"
+          "price": "18890000",
+          "buyback": "17443000"
         },
         "25gr": {
-          "price": "0",
-          "buyback": "43811000"
+          "price": "47095000",
+          "buyback": "43395000"
         },
         "50gr": {
-          "price": "0",
-          "buyback": "87622000"
+          "price": "94109000",
+          "buyback": "86790000"
         },
         "100gr": {
-          "price": "0",
-          "buyback": "175245000"
+          "price": "188137000",
+          "buyback": "173581000"
         },
         "250gr": {
-          "price": "0",
-          "buyback": "435956000"
+          "price": "470069000",
+          "buyback": "431814000"
         },
         "500gr": {
-          "price": "0",
-          "buyback": "871912000"
+          "price": "939921000",
+          "buyback": "863629000"
         },
         "1000gr": {
-          "price": "0",
-          "buyback": "1743825000"
+          "price": "1879801000",
+          "buyback": "1727259000"
         }
       }
     },
