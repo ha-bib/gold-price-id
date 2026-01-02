@@ -54,51 +54,51 @@
       "prices": {
         "05gr": {
           "price": "1432000",
-          "buyback": "0"
+          "buyback": "1226000"
         },
         "1gr": {
           "price": "2752000",
-          "buyback": "0"
+          "buyback": "2452000"
         },
         "2gr": {
           "price": "5437000",
-          "buyback": "0"
+          "buyback": "4905000"
         },
         "3gr": {
           "price": "8127000",
-          "buyback": "0"
+          "buyback": "7358000"
         },
         "5gr": {
           "price": "13507000",
-          "buyback": "0"
+          "buyback": "12263000"
         },
         "10gr": {
           "price": "26956000",
-          "buyback": "0"
+          "buyback": "24526000"
         },
         "25gr": {
           "price": "67251000",
-          "buyback": "0"
+          "buyback": "61016000"
         },
         "50gr": {
           "price": "134415000",
-          "buyback": "0"
+          "buyback": "122033000"
         },
         "100gr": {
           "price": "268744000",
-          "buyback": "0"
+          "buyback": "244066000"
         },
         "250gr": {
           "price": "671567000",
-          "buyback": "0"
+          "buyback": "607159000"
         },
         "500gr": {
           "price": "1342902000",
-          "buyback": "0"
+          "buyback": "1214319000"
         },
         "1000gr": {
           "price": "2685760000",
-          "buyback": "0"
+          "buyback": "2428638000"
         }
       }
     },
