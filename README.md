@@ -1,5 +1,6 @@
 # install dependecies
 python -m pip install requests
+python -m pip install bs4
 
 # Run the scrapper
 python main.py
