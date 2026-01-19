@@ -1,3 +1,6 @@
+# install dependecies
+python -m pip install requests
+
 # Run the scrapper
 python main.py
 
