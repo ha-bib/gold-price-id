@@ -1,6 +1,6 @@
 {
-  "timestamp": "2026-01-31_14-01-04",
-  "update_date": "31 January 2026 14:01:04",
+  "timestamp": "2026-01-31_22-57-16",
+  "update_date": "31 January 2026 22:57:16",
   "sources": {
     "GALERI 24": {
       "prices": {
@@ -149,36 +149,36 @@
     "SEMAR": {
       "prices": {
         "1gr": {
-          "price": "2865000",
-          "buyback": "2727000"
+          "price": "2876000",
+          "buyback": "2738000"
         },
         "2gr": {
-          "price": "5616000",
-          "buyback": "5448000"
+          "price": "5636000",
+          "buyback": "5466000"
         },
         "3gr": {
-          "price": "8424000",
-          "buyback": "8214000"
+          "price": "8454000",
+          "buyback": "8244000"
         },
         "5gr": {
-          "price": "13910000",
-          "buyback": "13560000"
+          "price": "13960000",
+          "buyback": "13610000"
         },
         "10gr": {
-          "price": "27560000",
-          "buyback": "27010000"
+          "price": "27660000",
+          "buyback": "27110000"
         },
         "25gr": {
-          "price": "68250000",
-          "buyback": "67600000"
+          "price": "68500000",
+          "buyback": "67850000"
         },
         "50gr": {
-          "price": "136500000",
-          "buyback": "135200000"
+          "price": "137000000",
+          "buyback": "135700000"
         },
         "100gr": {
-          "price": "273000000",
-          "buyback": "270400000"
+          "price": "274000000",
+          "buyback": "271400000"
         }
       }
     }
